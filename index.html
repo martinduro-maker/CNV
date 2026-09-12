@@ -279,8 +279,8 @@
     <div class="grid">
       <div class="field">
         <label for="cuit">CUIT de la emisora</label>
-        <input id="cuit" type="text" placeholder="nn-nnnnnnnn-n" value="nn-nnnnnnnn-n">
-        <small>Con o sin guiones</small>
+        <input id="cuit" type="text" inputmode="numeric" placeholder="##-########-#" maxlength="13">
+        <small>Se completa solo con guiones a medida que escribís</small>
       </div>
       <div class="field">
         <label for="desde">Desde</label>
@@ -380,6 +380,19 @@ function parsearFechaEs(texto) {
 function limpiarCuit(v) {
   return v.replace(/\D/g, '');
 }
+
+function formatearCuit(digitos) {
+  digitos = digitos.slice(0, 11);
+  let out = digitos.slice(0, 2);
+  if (digitos.length > 2) out += '-' + digitos.slice(2, 10);
+  if (digitos.length > 10) out += '-' + digitos.slice(10, 11);
+  return out;
+}
+
+document.getElementById('cuit').addEventListener('input', (e) => {
+  const digitos = limpiarCuit(e.target.value);
+  e.target.value = formatearCuit(digitos);
+});
 
 function slugArchivo(nombre) {
   return nombre.normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
