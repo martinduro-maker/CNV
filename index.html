@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Buscador CNV — Presentaciones de emisoras</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+  :root{
+    --paper:#f3f4f1;
+    --paper-raised:#fbfbf9;
+    --ink:#1c1f1d;
+    --ink-soft:#565b57;
+    --ink-faint:#8b8f8a;
+    --line:#d8d9d3;
+    --line-strong:#b7b9b1;
+    --navy:#1b3358;
+    --navy-deep:#122239;
+    --amber:#a3690f;
+    --amber-bg:#f4e9d6;
+    --danger:#8c2f22;
+    --danger-bg:#f6e3df;
+    --radius:3px;
+    --serif:'Source Serif 4', Georgia, serif;
+    --sans:'IBM Plex Sans', -apple-system, sans-serif;
+    --mono:'IBM Plex Mono', ui-monospace, monospace;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:var(--sans);
+    line-height:1.5;
+  }
+  .wrap{
+    max-width:920px;
+    margin:0 auto;
+    padding:2.5rem 1.5rem 5rem;
+  }
+  header.masthead{
+    border-bottom:2px solid var(--ink);
+    padding-bottom:1rem;
+    margin-bottom:2rem;
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    flex-wrap:wrap;
+    gap:.5rem;
+  }
+  header.masthead h1{
+    font-family:var(--serif);
+    font-weight:600;
+    font-size:1.6rem;
+    margin:0;
+    letter-spacing:.01em;
+  }
+  header.masthead .tag{
+    font-family:var(--mono);
+    font-size:.72rem;
+    color:var(--ink-faint);
+    text-transform:uppercase;
+    letter-spacing:.08em;
+  }
+  section.panel{
+    background:var(--paper-raised);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:1.5rem;
+    margin-bottom:1.5rem;
+  }
+  section.panel h2{
+    font-family:var(--serif);
+    font-size:1.05rem;
+    font-weight:600;
+    margin:0 0 1rem;
+  }
+  .grid{
+    display:grid;
+    grid-template-columns:1.3fr 1fr 1fr;
+    gap:1rem;
+  }
+  .field{
+    display:flex;
+    flex-direction:column;
+    gap:.35rem;
+  }
+  .field label{
+    font-size:.78rem;
+    color:var(--ink-soft);
+    font-weight:500;
+  }
+  .field small{
+    font-size:.7rem;
+    color:var(--ink-faint);
+  }
+  input, select{
+    font-family:var(--mono);
+    font-size:.88rem;
+    padding:.5rem .6rem;
+    border:1px solid var(--line-strong);
+    border-radius:var(--radius);
+    background:#fff;
+    color:var(--ink);
+  }
+  input:focus, select:focus{
+    outline:none;
+    border-color:var(--navy);
+    box-shadow:0 0 0 2px rgba(27,51,88,.12);
+  }
+  .row-dates{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:1rem;
+  }
+  .actions-bar{
+    display:flex;
+    align-items:center;
+    gap:.75rem;
+    margin-top:1.25rem;
+  }
+  button{
+    font-family:var(--sans);
+    font-weight:500;
+    font-size:.85rem;
+    padding:.6rem 1.1rem;
+    border-radius:var(--radius);
+    border:1px solid var(--ink);
+    background:var(--ink);
+    color:#fff;
+    cursor:pointer;
+  }
+  button.secondary{
+    background:transparent;
+    color:var(--ink);
+    border:1px solid var(--line-strong);
+  }
+  button.secondary:hover{ border-color:var(--ink); }
+  button:disabled{
+    opacity:.45;
+    cursor:not-allowed;
+  }
+  button.primary{
+    background:var(--navy);
+    border-color:var(--navy);
+  }
+  button.primary:hover{ background:var(--navy-deep); }
+
+  .status-line{
+    font-family:var(--mono);
+    font-size:.78rem;
+    color:var(--ink-soft);
+  }
+  .status-line.err{ color:var(--danger); }
+
+  table.results{
+    width:100%;
+    border-collapse:collapse;
+    font-size:.85rem;
+  }
+  table.results th{
+    text-align:left;
+    font-size:.72rem;
+    text-transform:uppercase;
+    letter-spacing:.05em;
+    color:var(--ink-soft);
+    border-bottom:2px solid var(--ink);
+    padding:.5rem .5rem;
+    font-weight:600;
+  }
+  table.results td{
+    padding:.55rem .5rem;
+    border-bottom:1px solid var(--line);
+    vertical-align:top;
+  }
+  table.results tr:nth-child(even) td{
+    background:rgba(0,0,0,.015);
+  }
+  table.results td.fecha{
+    font-family:var(--mono);
+    white-space:nowrap;
+    color:var(--ink-soft);
+  }
+  table.results td.check{
+    width:28px;
+  }
+  table.results tr.selected td{
+    background:rgba(27,51,88,.055);
+  }
+  input[type=checkbox]{
+    width:16px;
+    height:16px;
+    accent-color:var(--navy);
+  }
+  .empty-note{
+    font-size:.85rem;
+    color:var(--ink-faint);
+    padding:1.5rem 0;
+    text-align:center;
+  }
+  .sticky-bar{
+    position:sticky;
+    bottom:0;
+    background:var(--paper-raised);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:.9rem 1.25rem;
+    margin-top:1rem;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:1rem;
+    box-shadow:0 -6px 16px -12px rgba(0,0,0,.2);
+  }
+  .sticky-bar .count{
+    font-family:var(--mono);
+    font-size:.82rem;
+    color:var(--ink-soft);
+  }
+  .log{
+    font-family:var(--mono);
+    font-size:.76rem;
+    color:var(--ink-soft);
+    max-height:140px;
+    overflow-y:auto;
+    border-top:1px solid var(--line);
+    margin-top:1rem;
+    padding-top:.75rem;
+    display:none;
+  }
+  .log.show{ display:block; }
+  .log div{ padding:.1rem 0; }
+  .log div.err{ color:var(--danger); }
+  .log div.ok{ color:#3c6b3f; }
+  .notice{
+    font-size:.78rem;
+    background:var(--amber-bg);
+    color:var(--amber);
+    border:1px solid #e3cfa1;
+    border-radius:var(--radius);
+    padding:.6rem .8rem;
+    margin-bottom:1.5rem;
+  }
+  footer{
+    margin-top:3rem;
+    padding-top:1rem;
+    border-top:1px solid var(--line);
+    font-size:.72rem;
+    color:var(--ink-faint);
+    font-family:var(--mono);
+  }
+  @media (max-width:720px){
+    .grid{ grid-template-columns:1fr; }
+    .row-dates{ grid-template-columns:1fr 1fr; }
+    table.results{ font-size:.78rem; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="masthead">
+    <h1>Buscador de presentaciones — CNV</h1>
+    <span class="tag">Autopista de información financiera</span>
+  </header>
+
+  <p class="notice">
+    Esta herramienta corre enteramente en tu navegador y consulta datos públicos
+    de la CNV. Para las páginas que no permiten pedidos desde otro sitio, usa un
+    proxy intermediario — si algo tarda mucho o falla, puede ser ese proxy y no
+    la CNV en sí.
+  </p>
+
+  <section class="panel">
+    <h2>1. Buscar presentaciones</h2>
+    <div class="grid">
+      <div class="field">
+        <label for="cuit">CUIT de la emisora</label>
+        <input id="cuit" type="text" placeholder="33-51629418-9" value="33-51629418-9">
+        <small>Con o sin guiones</small>
+      </div>
+      <div class="field">
+        <label for="desde">Desde</label>
+        <input id="desde" type="date">
+      </div>
+      <div class="field">
+        <label for="hasta">Hasta</label>
+        <input id="hasta" type="date">
+      </div>
+    </div>
+    <div class="grid" style="margin-top:1rem; grid-template-columns:1fr;">
+      <div class="field">
+        <label for="tipo">Tipo de documento (texto a buscar en la descripción, opcional)</label>
+        <input id="tipo" list="tipos-sugeridos" placeholder="ej: HECHO RELEVANTE">
+        <datalist id="tipos-sugeridos">
+          <option value="HECHO RELEVANTE">
+          <option value="ESTADOS CONTABLES">
+          <option value="ACTA DE ÓRGANO DE ADMINISTRACIÓN">
+          <option value="ACTA ORGANO DE FISCALIZACIÓN">
+          <option value="ACTA DE ASAMBLEA">
+          <option value="CONVOCATORIA A ASAMBLEA">
+          <option value="NÓMINA DE AUTORIDADES">
+          <option value="CÓDIGO DE GOBIERNO SOCIETARIO">
+          <option value="ESTATUTOS VIGENTES">
+          <option value="PROSPECTO">
+          <option value="AVISO DE SUSCRIPCIÓN">
+          <option value="AVISO DE RESULTADO">
+        </datalist>
+      </div>
+    </div>
+    <div class="actions-bar">
+      <button class="primary" id="btn-buscar">Buscar</button>
+      <span class="status-line" id="status-buscar"></span>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-resultados" style="display:none;">
+    <h2>2. Elegir y descargar</h2>
+    <div id="tabla-contenedor"></div>
+    <div class="sticky-bar">
+      <span class="count" id="count-seleccion">0 seleccionadas</span>
+      <div style="display:flex; gap:.6rem;">
+        <button class="secondary" id="btn-todas">Seleccionar todas</button>
+        <button class="primary" id="btn-descargar" disabled>Descargar seleccionadas</button>
+      </div>
+    </div>
+    <div class="log" id="log"></div>
+  </section>
+
+  <footer>
+    fuente: cnv.gov.ar &amp; aif2.cnv.gov.ar — datos públicos, sin garantía de disponibilidad
+  </footer>
+
+</div>
+
+<script>
+// Pegá acá la URL de tu propio Cloudflare Worker (ver README) para máxima confiabilidad.
+// Ejemplo: 'https://cnv-proxy.tu-usuario.workers.dev'
+const MI_WORKER = 'https://cnv-proxy.martinduro.workers.dev';
+
+const PROXIES = [
+  { nombre: 'directo', build: u => u },
+  ...(MI_WORKER ? [{ nombre: 'mi-worker', build: u => `${MI_WORKER}?url=` + encodeURIComponent(u) }] : []),
+  { nombre: 'codetabs', build: u => 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u) },
+  { nombre: 'allorigins', build: u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u) },
+  { nombre: 'corsproxy.io', build: u => 'https://corsproxy.io/?url=' + encodeURIComponent(u) },
+];
+
+async function fetchConProxy(url, options = {}) {
+  const intentos = [];
+  for (const proxy of PROXIES) {
+    const finalUrl = proxy.build(url);
+    try {
+      const resp = await fetch(finalUrl, options);
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      console.log(`[fetchConProxy] OK vía "${proxy.nombre}" -> ${finalUrl}`);
+      return resp;
+    } catch (e) {
+      console.warn(`[fetchConProxy] falló "${proxy.nombre}" (${finalUrl}):`, e);
+      intentos.push(`${proxy.nombre}: ${e.message || e}`);
+    }
+  }
+  throw new Error(`Todos los proxies fallaron para ${url} — ` + intentos.join(' | '));
+}
+
+const MESES = {ene:'01',feb:'02',mar:'03',abr:'04',may:'05',jun:'06',jul:'07',ago:'08',sep:'09',oct:'10',nov:'11',dic:'12'};
+
+function parsearFechaEs(texto) {
+  const m = texto.trim().match(/(\d{1,2})\s+([a-zA-Zé]{3})\.?\s+(\d{4})/);
+  if (!m) return null;
+  const mes = MESES[m[2].toLowerCase().slice(0,3)];
+  if (!mes) return null;
+  const dia = m[1].padStart(2, '0');
+  return `${m[3]}-${mes}-${dia}`;
+}
+
+function limpiarCuit(v) {
+  return v.replace(/\D/g, '');
+}
+
+function slugArchivo(nombre) {
+  return nombre.normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^A-Za-z0-9._-]+/g, '_').replace(/^_+|_+$/g, '');
+}
+
+let presentacionesActuales = [];
+
+async function buscar() {
+  const cuit = limpiarCuit(document.getElementById('cuit').value);
+  const desde = document.getElementById('desde').value;
+  const hasta = document.getElementById('hasta').value;
+  const tipo = document.getElementById('tipo').value.trim().toLowerCase();
+  const status = document.getElementById('status-buscar');
+  const btn = document.getElementById('btn-buscar');
+
+  if (!cuit || cuit.length < 10) {
+    status.textContent = 'Ingresá un CUIT válido.';
+    status.className = 'status-line err';
+    return;
+  }
+
+  btn.disabled = true;
+  status.className = 'status-line';
+  status.textContent = 'Descargando listado (puede tardar 1-2 minutos)...';
+  document.getElementById('panel-resultados').style.display = 'none';
+
+  try {
+    const url = `https://www.cnv.gov.ar/SitioWeb/Empresas/Empresa/${cuit}`;
+    const resp = await fetchConProxy(url);
+    const html = await resp.text();
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+
+    const vistos = new Set();
+    let presentaciones = [];
+    doc.querySelectorAll('tr').forEach(fila => {
+      const celdas = fila.querySelectorAll('td');
+      if (celdas.length < 5) return;
+      const link = fila.querySelector('a[href*="presentations/publicview/"], a[href*="Presentations/publicview/"]');
+      if (!link) return;
+      const m = link.getAttribute('href').match(/publicview\/([0-9a-fA-F-]{36})/);
+      if (!m) return;
+      const guid = m[1].toLowerCase();
+      if (vistos.has(guid)) return;
+      vistos.add(guid);
+
+      const fechaTexto = celdas[0].textContent.trim();
+      const descripcion = celdas[2] ? celdas[2].textContent.trim() : '';
+      presentaciones.push({
+        fechaTexto,
+        fecha: parsearFechaEs(fechaTexto),
+        descripcion,
+        guid,
+      });
+    });
+
+    if (desde) presentaciones = presentaciones.filter(p => p.fecha && p.fecha >= desde);
+    if (hasta) presentaciones = presentaciones.filter(p => p.fecha && p.fecha <= hasta);
+    if (tipo) presentaciones = presentaciones.filter(p => p.descripcion.toLowerCase().includes(tipo));
+
+    presentacionesActuales = presentaciones;
+    renderTabla(presentaciones);
+
+    status.textContent = `${presentaciones.length} presentaciones encontradas.`;
+  } catch (e) {
+    status.className = 'status-line err';
+    status.textContent = 'No se pudo traer el listado: ' + e.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function renderTabla(presentaciones) {
+  const cont = document.getElementById('tabla-contenedor');
+  document.getElementById('panel-resultados').style.display = 'block';
+
+  if (presentaciones.length === 0) {
+    cont.innerHTML = '<p class="empty-note">Sin resultados para estos filtros.</p>';
+    document.getElementById('btn-descargar').disabled = true;
+    actualizarContador();
+    return;
+  }
+
+  let filas = presentaciones.map((p, i) => `
+    <tr data-idx="${i}">
+      <td class="check"><input type="checkbox" class="chk" data-idx="${i}"></td>
+      <td class="fecha">${p.fechaTexto}</td>
+      <td>${p.descripcion}</td>
+    </tr>
+  `).join('');
+
+  cont.innerHTML = `
+    <table class="results">
+      <thead><tr><th></th><th>Fecha</th><th>Descripción</th></tr></thead>
+      <tbody>${filas}</tbody>
+    </table>
+  `;
+
+  cont.querySelectorAll('.chk').forEach(chk => {
+    chk.addEventListener('change', () => {
+      chk.closest('tr').classList.toggle('selected', chk.checked);
+      actualizarContador();
+    });
+  });
+  actualizarContador();
+}
+
+function actualizarContador() {
+  const marcados = document.querySelectorAll('.chk:checked').length;
+  document.getElementById('count-seleccion').textContent = `${marcados} seleccionadas`;
+  document.getElementById('btn-descargar').disabled = marcados === 0;
+}
+
+function log(msg, cls) {
+  const el = document.getElementById('log');
+  el.classList.add('show');
+  const line = document.createElement('div');
+  if (cls) line.className = cls;
+  line.textContent = msg;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+
+async function obtenerArchivosDePresentacion(guid) {
+  const url = `https://aif2.cnv.gov.ar/presentations/publicview/${guid}`;
+  const resp = await fetchConProxy(url);
+  const html = await resp.text();
+  const regex = /"nombreArchivo"\s*:\s*"(.*?)".*?"guid"\s*:\s*"([0-9a-fA-F-]{36})"/gs;
+  const archivos = [];
+  let m;
+  while ((m = regex.exec(html)) !== null) {
+    archivos.push({ nombreArchivo: m[1], blobGuid: m[2] });
+  }
+  return archivos;
+}
+
+async function descargarBlob(blobGuid) {
+  const valetUrl = `https://aif2.cnv.gov.ar/api/ValetKeyProvider/GetPublicValetKey/${blobGuid}?operation=DownloadBlob`;
+  const r1 = await fetchConProxy(valetUrl);
+  const data = await r1.json();
+  const valetKey = data.valetKeyData;
+
+  const body = new URLSearchParams();
+  body.set('ValetKey', valetKey);
+
+  const r2 = await fetch(`https://blob.cnv.gov.ar/BlobWebService.svc/DownloadBlob/${blobGuid}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: body.toString(),
+  });
+  if (!r2.ok) throw new Error('HTTP ' + r2.status);
+  return await r2.blob();
+}
+
+async function descargarSeleccionadas() {
+  const idxs = Array.from(document.querySelectorAll('.chk:checked')).map(c => parseInt(c.dataset.idx));
+  const btn = document.getElementById('btn-descargar');
+  btn.disabled = true;
+  document.getElementById('log').innerHTML = '';
+
+  const zip = new JSZip();
+  let ok = 0, fallidas = 0;
+
+  for (const idx of idxs) {
+    const p = presentacionesActuales[idx];
+    const etiqueta = `${p.fechaTexto} — ${p.descripcion.slice(0, 60)}`;
+    try {
+      const archivos = await obtenerArchivosDePresentacion(p.guid);
+      if (archivos.length === 0) {
+        log(`(sin adjuntos) ${etiqueta}`);
+        continue;
+      }
+      for (const archivo of archivos) {
+        const blob = await descargarBlob(archivo.blobGuid);
+        const nombreFinal = `${p.fecha || 'sin-fecha'}_${slugArchivo(archivo.nombreArchivo)}`;
+        zip.file(nombreFinal, blob);
+        log(`descargado: ${nombreFinal}`, 'ok');
+        ok++;
+      }
+    } catch (e) {
+      log(`ERROR en "${etiqueta}": ${e.message}`, 'err');
+      fallidas++;
+    }
+  }
+
+  if (ok > 0) {
+    log(`Armando ZIP con ${ok} archivo(s)...`);
+    const contenido = await zip.generateAsync({ type: 'blob' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(contenido);
+    a.download = 'presentaciones_cnv.zip';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    log(`Listo: ${ok} descargados, ${fallidas} con error.`, fallidas ? 'err' : 'ok');
+  } else {
+    log('No se pudo descargar ningún archivo.', 'err');
+  }
+
+  btn.disabled = false;
+}
+
+document.getElementById('btn-buscar').addEventListener('click', buscar);
+document.getElementById('btn-descargar').addEventListener('click', descargarSeleccionadas);
+document.getElementById('btn-todas').addEventListener('click', () => {
+  const todos = document.querySelectorAll('.chk');
+  const algunoSinMarcar = Array.from(todos).some(c => !c.checked);
+  todos.forEach(c => {
+    c.checked = algunoSinMarcar;
+    c.closest('tr').classList.toggle('selected', c.checked);
+  });
+  actualizarContador();
+});
+</script>
+</body>
+</html>
